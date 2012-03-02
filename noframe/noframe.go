@@ -8,17 +8,24 @@ import (
 	"os"
 )
 
+func HandleImage(input string) (err error) {
+	var f *os.File
+	if f, err = os.Open(input); err != nil {
+		return
+	}
+	defer f.Close()
+	var img image.Image
+	if img, _, err = image.Decode(f); err != nil {
+		return
+	}
+	fmt.Printf("%s: %v\n", input, img.Bounds())
+	return
+}
+
 func main() {
 	for _, input := range os.Args[1:] {
-		f, err := os.Open(input)
-		if err != nil {
-			log.Fatalf("Unable to open input file %s: %v", input, err)
+		if err := HandleImage(input); err != nil {
+			log.Fatalf("Unable to handle %s: %v", input)
 		}
-		var img image.Image
-		if img, _, err = image.Decode(f); err != nil {
-			log.Fatalf("Unable to parse image from %s: %v", input, err)
-		}
-		f.Close()
-		fmt.Printf("%s: %v\n", input, img.Bounds())
 	}
 }
