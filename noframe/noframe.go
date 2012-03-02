@@ -4,14 +4,17 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"image/draw"
 	_ "image/jpeg"
+	"image/png"
 	"log"
 	"math"
 	"os"
 )
 
-const maxScore = 0.004
+const maxScore = 0.005
 const minColor = 0
+const bluePenalty = 10 * 256
 
 func sqr(x float64) float64 {
 	return x * x
@@ -21,9 +24,12 @@ func sqrt(x float64) float64 {
 	return math.Sqrt(x)
 }
 
-func ns(x uint32) float64 {
-	if x < minColor {
+func ns(x uint32, penalty uint32) float64 {
+	if x < minColor || x < penalty {
 		x = 0
+	}
+	if x >= penalty {
+		x -= penalty
 	}
 	return sqr(float64(x) / 65536)
 }
@@ -37,7 +43,7 @@ func max(x, y float64) float64 {
 
 func l2(c color.Color) float64 {
 	r, g, b, _ := c.RGBA()
-	return max(ns(r), max(ns(g), ns(b)))
+	return ns(r, 0) + ns(g, 0) + ns(b, bluePenalty)
 }
 
 func scoreYMin(img image.Image, min, max image.Point) (score float64) {
@@ -124,6 +130,14 @@ func handleImage(input string) (err error) {
 	}
 	r := findActualImage(img)
 	fmt.Printf("%s: %v, actual image is inside %v\n", input, img.Bounds(), r)
+	result := image.NewRGBA(r)
+	draw.Draw(result, r, img, r.Min, draw.Src)
+	var outF *os.File
+	if outF, err = os.OpenFile(input+".out.png", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644); err != nil {
+		return err
+	}
+	defer outF.Close()
+	err = png.Encode(outF, result)
 	return
 }
 
